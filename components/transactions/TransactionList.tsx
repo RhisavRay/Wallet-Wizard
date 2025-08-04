@@ -76,10 +76,13 @@ export default function TransactionList({
                 <div className="flex items-center space-x-3">
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-foreground truncate">
-                      {transaction.note || `${transaction.type} transaction`}
+                      {transaction.note || (transaction.type === 'transfer' 
+                        ? `Transfer from ${transaction.from_account} to ${transaction.to_account}`
+                        : `${transaction.type} transaction`
+                      )}
                     </div>
                     <div className={`text-lg font-bold ${getTransactionTypeColor(transaction.type)}`}>
-                      {transaction.type === 'expense' ? '-' : '+'}
+                      {transaction.type === 'expense' ? '-' : transaction.type === 'income' ? '+' : ''}
                       {formatCurrency(transaction.amount)}
                     </div>
                   </div>
@@ -96,14 +99,17 @@ export default function TransactionList({
               {/* Category */}
               <div className="col-span-2">
                 <span className="text-sm text-foreground">
-                  {transaction.category}
+                  {transaction.type === 'transfer' ? 'Transfer' : transaction.category}
                 </span>
               </div>
 
               {/* Account */}
               <div className="col-span-2">
                 <span className="text-sm text-foreground">
-                  {transaction.account}
+                  {transaction.type === 'transfer' 
+                    ? `${transaction.from_account} → ${transaction.to_account}`
+                    : transaction.account
+                  }
                 </span>
               </div>
 

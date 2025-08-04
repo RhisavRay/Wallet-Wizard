@@ -24,12 +24,35 @@ export default function BudgetTab() {
   const [selectedBudget, setSelectedBudget] = useState<Budget | null>(null)
   const [budgetToDelete, setBudgetToDelete] = useState<string | null>(null)
 
-  // Calculate budget data
-  const totalBudget = state.budgets.reduce((sum, budget) => sum + budget.limit, 0)
-  const totalSpent = state.budgets.reduce((sum, budget) => sum + budget.spent, 0)
+  // Calculate spent amounts for each budget based on actual transactions
+  const calculateBudgetSpent = (categoryName: string) => {
+    return filteredTransactions
+      .filter(transaction => 
+        transaction.type === 'expense' && 
+        transaction.category === categoryName
+      )
+      .reduce((sum, transaction) => sum + transaction.amount, 0)
+  }
+
+  // Calculate budget data with dynamic spent amounts and populate category_name
+  const budgetsWithSpent = state.budgets.map(budget => {
+    const category = state.categories.find(c => c.id === budget.category_id)
+    const limit = Number(budget.limit)
+    const spent = calculateBudgetSpent(category?.name || '')
+    return {
+      ...budget,
+      category_name: category?.name || '',
+      limit: limit,
+      spent: spent,
+      remaining: limit - spent
+    }
+  })
+
+  const totalBudget = budgetsWithSpent.reduce((sum, budget) => sum + Number(budget.limit), 0)
+  const totalSpent = budgetsWithSpent.reduce((sum, budget) => sum + Number(budget.spent), 0)
 
   // Get expense categories that don't have budgets
-  const budgetedCategories = state.budgets.map(budget => budget.category_name)
+  const budgetedCategories = budgetsWithSpent.map(budget => budget.category_name).filter(Boolean)
   const unbudgetedCategories = state.categories
     .filter(category => category.type === 'expense' && !budgetedCategories.includes(category.name))
 
@@ -126,14 +149,14 @@ export default function BudgetTab() {
           <CardTitle>Budgeted Categories</CardTitle>
         </CardHeader>
         <CardContent>
-          {state.budgets.length === 0 ? (
+          {budgetsWithSpent.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <div className="text-4xl mb-2">💰</div>
               <p>No budgets set. Start by adding a budget for an expense category.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {state.budgets.map((budget) => {
+              {budgetsWithSpent.map((budget) => {
                 const progress = Math.min((budget.spent / budget.limit) * 100, 100)
                 const isOverBudget = budget.spent > budget.limit
                 
@@ -149,7 +172,7 @@ export default function BudgetTab() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditBudget(budget)}>
+                            <DropdownMenuItem onClick={() => handleEditBudget(state.budgets.find(b => b.id === budget.id)!)}>
                               <Edit className="h-4 w-4 mr-2" />
                               Change Limit
                             </DropdownMenuItem>
@@ -170,10 +193,12 @@ export default function BudgetTab() {
                           <span>Limit: {formatCurrency(budget.limit)}</span>
                         </div>
                         
-                        <Progress 
-                          value={progress} 
-                          className={`h-2 ${isOverBudget ? 'bg-red-200' : ''}`}
-                        />
+                        <div className={`relative h-2 w-full overflow-hidden rounded-full bg-secondary ${isOverBudget ? 'bg-red-200' : ''}`}>
+                          <div 
+                            className={`h-full transition-all ${isOverBudget ? 'bg-red-500' : 'bg-primary'}`}
+                            style={{ width: `${Math.min(progress, 100)}%` }}
+                          />
+                        </div>
                         
                         <div className="flex justify-between text-sm">
                           <span>Remaining: {formatCurrency(budget.remaining)}</span>
@@ -213,7 +238,7 @@ export default function BudgetTab() {
                       setSelectedBudget({
                         id: '',
                         category_id: category.id,
-                        category_name: category.name,
+                        category_name: '', // Will be populated by database join
                         limit: 0,
                         spent: 0,
                         remaining: 0,

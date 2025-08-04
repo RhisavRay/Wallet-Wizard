@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useApp } from '@/context/AppContext'
-import { Budget } from '@/types'
+import { Budget, Category } from '@/types'
 import { generateId } from '@/lib/utils'
 
 // BudgetDialog component - modal dialog for adding and editing budget limits
@@ -26,8 +26,13 @@ export default function BudgetDialog({
   onClose,
   onSave
 }: BudgetDialogProps) {
-  const { state } = useApp()
+  const { state, dispatch } = useApp()
   const isEditing = !!budget?.id
+
+  // State for inline category creation
+  const [showCreateCategory, setShowCreateCategory] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false)
 
   // Form setup using react-hook-form
   const {
@@ -66,19 +71,66 @@ export default function BudgetDialog({
   const onSubmit = (data: { category_id: string; limit: number; month: string }) => {
     const category = state.categories.find(c => c.id === data.category_id)
     
-    const newBudget: Budget = {
+    // Check for existing budget for this category and month
+    const existingBudget = state.budgets.find(b => 
+      b.category_id === data.category_id && b.month === data.month
+    )
+    
+    if (existingBudget && !budget?.id) {
+      // Show error for duplicate budget
+      alert(`A budget for ${category?.name} in ${data.month} already exists.`)
+      return
+    }
+    
+    // Create budget object without category_name (will be added by database join)
+    const newBudget: Omit<Budget, 'category_name' | 'spent' | 'remaining'> = {
       id: budget?.id || generateId(),
       category_id: data.category_id,
-      category_name: category?.name || '',
       limit: data.limit,
-      spent: budget?.spent || 0,
-      remaining: data.limit - (budget?.spent || 0),
       month: data.month,
       created_at: budget?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
 
-    onSave(newBudget)
+    onSave(newBudget as Budget)
+  }
+
+  // Handle creating new category
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newCategoryName.trim()) return
+
+    setIsCreatingCategory(true)
+    try {
+      const newCategory: Category = {
+        id: generateId(),
+        name: newCategoryName.trim(),
+        type: 'expense', // Budgets are only for expense categories
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
+      
+      dispatch({ type: 'ADD_CATEGORY', payload: newCategory })
+      
+      // Automatically select the newly created category
+      setValue('category_id', newCategory.id)
+      
+      setNewCategoryName('')
+      setShowCreateCategory(false)
+    } catch (error) {
+      console.error('Error creating category:', error)
+    } finally {
+      setIsCreatingCategory(false)
+    }
+  }
+
+  // Handle "Add New" selection for categories
+  const handleCategoryChange = (value: string) => {
+    if (value === 'add-new') {
+      setShowCreateCategory(true)
+    } else {
+      setValue('category_id', value)
+    }
   }
 
   // Get available expense categories for the form
@@ -99,7 +151,7 @@ export default function BudgetDialog({
             <Label htmlFor="category">Category</Label>
             <Select
               value={selectedCategoryId}
-              onValueChange={(value) => setValue('category_id', value)}
+              onValueChange={handleCategoryChange}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select category" />
@@ -110,6 +162,9 @@ export default function BudgetDialog({
                     {category.name}
                   </SelectItem>
                 ))}
+                <SelectItem value="add-new" className="text-blue-600 font-medium">
+                  + Add New Category
+                </SelectItem>
               </SelectContent>
             </Select>
             {errors.category_id && (
@@ -161,6 +216,35 @@ export default function BudgetDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/* Inline dialog for creating new category */}
+      <Dialog open={showCreateCategory} onOpenChange={setShowCreateCategory}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Create New Expense Category</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateCategory} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="categoryName">Category Name</Label>
+              <Input
+                id="categoryName"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Enter expense category name"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowCreateCategory(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isCreatingCategory || !newCategoryName.trim()}>
+                {isCreatingCategory ? 'Creating...' : 'Create Category'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 } 

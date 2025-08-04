@@ -10,6 +10,8 @@ export interface Transaction {
   type: TransactionType;
   category: string;
   account: string;
+  from_account?: string; // For transfer transactions
+  to_account?: string; // For transfer transactions
   date: string; // ISO date string
   note?: string; // Optional note for the transaction
   created_at: string;
@@ -102,6 +104,8 @@ export interface TransactionFormData {
   type: TransactionType;
   category: string;
   account: string;
+  from_account?: string;
+  to_account?: string;
   date: string;
   note?: string;
 }

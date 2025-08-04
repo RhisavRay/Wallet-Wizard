@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Wallet, BarChart3, PiggyBank, CreditCard, Tag } from 'lucide-react'
+import { Wallet, BarChart3, PiggyBank, CreditCard, Tag, LogOut } from 'lucide-react'
 import { AppProvider } from '@/context/AppContext'
+import { AuthProvider, useAuth, LoginForm } from '@/components/auth/AuthProvider'
+import { Button } from '@/components/ui/button'
+import DatabaseDebug from '@/components/debug/DatabaseDebug'
 
 // Import the main tab components
 import RecordsTab from '@/components/tabs/RecordsTab'
@@ -14,10 +17,13 @@ import CategoriesTab from '@/components/tabs/CategoriesTab'
 
 // Main page component - entry point for the Wallet Wizard application
 // This component sets up the main navigation tabs and renders the appropriate content
-export default function HomePage() {
-  // State to track the currently active tab
-  // Defaults to 'records' as the main tab
+function AppContent() {
   const [activeTab, setActiveTab] = useState('records')
+  const { user, signOut } = useAuth()
+
+  if (!user) {
+    return <LoginForm />
+  }
 
   return (
     <AppProvider>
@@ -34,6 +40,13 @@ export default function HomePage() {
                   <h1 className="text-2xl font-bold text-foreground">Wallet Wizard</h1>
                   <p className="text-sm text-muted-foreground">Personal Finance Tracker</p>
                 </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-muted-foreground">{user.email}</span>
+                <Button variant="outline" size="sm" onClick={signOut}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
               </div>
             </div>
           </div>
@@ -87,8 +100,21 @@ export default function HomePage() {
               <CategoriesTab />
             </TabsContent>
           </Tabs>
+
+          {/* Debug component for troubleshooting */}
+          <div className="mt-8">
+            <DatabaseDebug />
+          </div>
         </main>
       </div>
     </AppProvider>
+  )
+}
+
+export default function HomePage() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   )
 } 

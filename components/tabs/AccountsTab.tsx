@@ -23,8 +23,35 @@ export default function AccountsTab() {
 
   // Calculate account balances from transactions
   const accountsWithBalances = state.accounts.map(account => {
-    const accountTransactions = allTransactions.filter(t => t.account === account.name)
-    const balance = account.initial_balance + calculateBalance(accountTransactions)
+    // Get all transactions that affect this account
+    const accountTransactions = allTransactions.filter(t => {
+      // Regular income/expense transactions
+      if (t.type !== 'transfer' && t.account === account.name) {
+        return true
+      }
+      // Transfer transactions - check if this account is involved
+      if (t.type === 'transfer') {
+        return t.from_account === account.name || t.to_account === account.name
+      }
+      return false
+    })
+
+    // Calculate balance including transfers
+    let balance = account.initial_balance
+    
+    accountTransactions.forEach(transaction => {
+      if (transaction.type === 'income') {
+        balance += transaction.amount
+      } else if (transaction.type === 'expense') {
+        balance -= transaction.amount
+      } else if (transaction.type === 'transfer') {
+        if (transaction.from_account === account.name) {
+          balance -= transaction.amount // Money going out
+        } else if (transaction.to_account === account.name) {
+          balance += transaction.amount // Money coming in
+        }
+      }
+    })
     
     return {
       ...account,
@@ -33,7 +60,7 @@ export default function AccountsTab() {
   })
 
   // Calculate summary values
-  const totalBalance = accountsWithBalances.reduce((sum, account) => sum + account.current_balance, 0)
+  const totalBalance = calculateBalance(allTransactions) + state.accounts.reduce((sum, account) => sum + account.initial_balance, 0)
   const totalIncome = calculateTotalIncome(allTransactions)
   const totalExpenses = calculateTotalExpenses(allTransactions)
 
