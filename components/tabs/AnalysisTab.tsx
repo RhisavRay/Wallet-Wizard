@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useApp, useFilteredTransactions } from '@/context/AppContext'
 import PeriodSelector from '@/components/shared/PeriodSelector'
 import FilterControls from '@/components/shared/FilterControls'
@@ -16,13 +17,117 @@ export default function AnalysisTab() {
   const { state } = useApp()
   const filteredTransactions = useFilteredTransactions()
   
-  // Local state for chart interactions
+  // Local state for chart interactions and analysis type selection
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedAnalysis, setSelectedAnalysis] = useState<string>('income-overview')
 
   // Calculate summary values based on filtered transactions
   const totalIncome = calculateTotalIncome(filteredTransactions)
   const totalExpenses = calculateTotalExpenses(filteredTransactions)
   const balance = calculateBalance(filteredTransactions)
+
+  // Handle analysis type change
+  const handleAnalysisChange = (value: string) => {
+    setSelectedAnalysis(value)
+    setSelectedCategory(null) // Reset category selection when changing analysis
+  }
+
+  // Render the selected analysis component
+  const renderAnalysis = () => {
+    switch (selectedAnalysis) {
+      case 'income-overview':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Income Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <IncomeExpenseOverview 
+                transactions={filteredTransactions}
+                onCategoryClick={setSelectedCategory}
+                analysisType="income"
+              />
+            </CardContent>
+          </Card>
+        )
+      
+      case 'expense-overview':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Expense Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <IncomeExpenseOverview 
+                transactions={filteredTransactions}
+                onCategoryClick={setSelectedCategory}
+                analysisType="expense"
+              />
+            </CardContent>
+          </Card>
+        )
+      
+      case 'income-flow':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Income Flow</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ExpenseFlowChart 
+                transactions={filteredTransactions}
+                period={state.filterState.period}
+                analysisType="income"
+              />
+            </CardContent>
+          </Card>
+        )
+      
+      case 'expense-flow':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Expense Flow</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ExpenseFlowChart 
+                transactions={filteredTransactions}
+                period={state.filterState.period}
+                analysisType="expense"
+              />
+            </CardContent>
+          </Card>
+        )
+      
+      case 'account-analysis':
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Account Analysis</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AccountAnalysis transactions={filteredTransactions} />
+            </CardContent>
+          </Card>
+        )
+      
+      default:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle>Income Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <IncomeExpenseOverview 
+                transactions={filteredTransactions}
+                onCategoryClick={setSelectedCategory}
+                analysisType="income"
+              />
+            </CardContent>
+          </Card>
+        )
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -75,48 +180,31 @@ export default function AnalysisTab() {
 
       {/* Controls section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <PeriodSelector />
-        <FilterControls />
+        <div className="flex items-center space-x-4">
+          <PeriodSelector />
+          <FilterControls />
+        </div>
+
+        {/* Analysis type selector */}
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium text-muted-foreground">Analysis Type:</span>
+          <Select value={selectedAnalysis} onValueChange={handleAnalysisChange}>
+            <SelectTrigger className="w-48">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="income-overview">Income Overview</SelectItem>
+              <SelectItem value="expense-overview">Expense Overview</SelectItem>
+              <SelectItem value="income-flow">Income Flow</SelectItem>
+              <SelectItem value="expense-flow">Expense Flow</SelectItem>
+              <SelectItem value="account-analysis">Account Analysis</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Charts section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Income/Expense Overview Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Income/Expense Overview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <IncomeExpenseOverview 
-              transactions={filteredTransactions}
-              onCategoryClick={setSelectedCategory}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Account Analysis Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Analysis</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <AccountAnalysis transactions={filteredTransactions} />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Expense Flow Chart - Full width */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Expense/Income Flow</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExpenseFlowChart 
-            transactions={filteredTransactions}
-            period={state.filterState.period}
-          />
-        </CardContent>
-      </Card>
+      {/* Selected analysis chart */}
+      {renderAnalysis()}
 
       {/* Category breakdown when a category is selected */}
       {selectedCategory && (

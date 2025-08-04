@@ -4,46 +4,46 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsi
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Transaction, PeriodType } from '@/types'
 
-// ExpenseFlowChart component - line chart showing income and expenses over time
-// This chart visualizes how income and expenses change across the selected period
+// ExpenseFlowChart component - line chart showing income or expenses over time
+// This chart visualizes how income or expenses change across the selected period
 interface ExpenseFlowChartProps {
   transactions: Transaction[]
   period: PeriodType
+  analysisType?: 'income' | 'expense'
 }
 
 export default function ExpenseFlowChart({ 
   transactions, 
-  period 
+  period,
+  analysisType = 'expense'
 }: ExpenseFlowChartProps) {
+  // Filter transactions by type
+  const filteredTransactions = transactions.filter(t => t.type === analysisType)
+  
   // Group transactions by date and calculate daily totals
-  const groupedData = transactions.reduce((acc, transaction) => {
+  const groupedData = filteredTransactions.reduce((acc, transaction) => {
     const date = transaction.date
     if (!acc[date]) {
-      acc[date] = { date, income: 0, expense: 0, balance: 0 }
+      acc[date] = { date, amount: 0 }
     }
     
-    if (transaction.type === 'income') {
-      acc[date].income += transaction.amount
-    } else if (transaction.type === 'expense') {
-      acc[date].expense += transaction.amount
-    }
-    
-    acc[date].balance = acc[date].income - acc[date].expense
+    acc[date].amount += transaction.amount
     return acc
-  }, {} as Record<string, { date: string; income: number; expense: number; balance: number }>)
+  }, {} as Record<string, { date: string; amount: number }>)
 
   // Convert to array and sort by date
   const chartData = Object.values(groupedData)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map(item => ({
       ...item,
-      date: formatDate(item.date)
+      date: formatDate(item.date),
+      [analysisType]: item.amount
     }))
 
   // Custom tooltip formatter
   const formatTooltip = (value: number, name: string) => [
     formatCurrency(value),
-    name.charAt(0).toUpperCase() + name.slice(1)
+    analysisType.charAt(0).toUpperCase() + analysisType.slice(1)
   ]
 
   // If no data, show empty state
@@ -52,7 +52,7 @@ export default function ExpenseFlowChart({
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         <div className="text-center">
           <div className="text-4xl mb-2">📈</div>
-          <p>No data available for this period</p>
+          <p>No {analysisType} data available for this period</p>
         </div>
       </div>
     )
@@ -78,27 +78,14 @@ export default function ExpenseFlowChart({
           <Legend />
           <Line 
             type="monotone" 
-            dataKey="income" 
-            stroke="#22c55e" 
+            dataKey={analysisType}
+            stroke={analysisType === 'income' ? '#22c55e' : '#ef4444'} // green for income, red for expense
             strokeWidth={2}
-            dot={{ fill: '#22c55e', strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="expense" 
-            stroke="#ef4444" 
-            strokeWidth={2}
-            dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
-            activeDot={{ r: 6 }}
-          />
-          <Line 
-            type="monotone" 
-            dataKey="balance" 
-            stroke="#3b82f6" 
-            strokeWidth={2}
-            strokeDasharray="5 5"
-            dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+            dot={{ 
+              fill: analysisType === 'income' ? '#22c55e' : '#ef4444', 
+              strokeWidth: 2, 
+              r: 4 
+            }}
             activeDot={{ r: 6 }}
           />
         </LineChart>

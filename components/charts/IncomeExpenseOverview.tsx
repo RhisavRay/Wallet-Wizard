@@ -4,39 +4,41 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { formatCurrency } from '@/lib/utils'
 import { Transaction } from '@/types'
 
-// IncomeExpenseOverview component - pie chart showing income vs expenses
-// This chart visualizes the proportion of income to expenses in the selected period
+// IncomeExpenseOverview component - pie chart showing income or expense breakdown
+// This chart visualizes the proportion of income or expenses by category in the selected period
 interface IncomeExpenseOverviewProps {
   transactions: Transaction[]
   onCategoryClick?: (category: string) => void
+  analysisType?: 'income' | 'expense'
 }
 
 export default function IncomeExpenseOverview({ 
   transactions, 
-  onCategoryClick 
+  onCategoryClick,
+  analysisType = 'income'
 }: IncomeExpenseOverviewProps) {
-  // Calculate total income and expenses
-  const totalIncome = transactions
-    .filter(t => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0)
+  // Filter transactions by type
+  const filteredTransactions = transactions.filter(t => t.type === analysisType)
   
-  const totalExpenses = transactions
-    .filter(t => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0)
+  // Group transactions by category
+  const categoryData = filteredTransactions.reduce((acc, transaction) => {
+    const category = transaction.category
+    if (!acc[category]) {
+      acc[category] = 0
+    }
+    acc[category] += transaction.amount
+    return acc
+  }, {} as Record<string, number>)
 
   // Prepare data for the pie chart
-  const data = [
-    {
-      name: 'Income',
-      value: totalIncome,
-      color: '#22c55e' // green-500
-    },
-    {
-      name: 'Expenses',
-      value: totalExpenses,
-      color: '#ef4444' // red-500
-    }
-  ].filter(item => item.value > 0) // Only show non-zero values
+  const data = Object.entries(categoryData)
+    .map(([category, amount]) => ({
+      name: category,
+      value: amount,
+      color: analysisType === 'income' ? '#22c55e' : '#ef4444' // green for income, red for expense
+    }))
+    .filter(item => item.value > 0) // Only show non-zero values
+    .sort((a, b) => b.value - a.value) // Sort by amount descending
 
   // Custom tooltip formatter
   const formatTooltip = (value: number, name: string) => [
@@ -57,7 +59,7 @@ export default function IncomeExpenseOverview({
       <div className="flex items-center justify-center h-64 text-muted-foreground">
         <div className="text-center">
           <div className="text-4xl mb-2">📊</div>
-          <p>No data available for this period</p>
+          <p>No {analysisType} data available for this period</p>
         </div>
       </div>
     )
@@ -90,8 +92,7 @@ export default function IncomeExpenseOverview({
       {/* Summary text */}
       <div className="mt-4 text-center text-sm text-muted-foreground">
         <div className="flex justify-center space-x-4">
-          <span>Income: {formatCurrency(totalIncome)}</span>
-          <span>Expenses: {formatCurrency(totalExpenses)}</span>
+          <span>Total {analysisType.charAt(0).toUpperCase() + analysisType.slice(1)}: {formatCurrency(data.reduce((sum, item) => sum + item.value, 0))}</span>
         </div>
       </div>
     </div>
