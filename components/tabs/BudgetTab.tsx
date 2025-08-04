@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useApp, useFilteredTransactions } from '@/context/AppContext'
-import PeriodSelector from '@/components/shared/PeriodSelector'
+import MonthSelector from '@/components/shared/MonthSelector'
 import FilterControls from '@/components/shared/FilterControls'
 import BudgetDialog from '@/components/budgets/BudgetDialog'
 import { formatCurrency, calculateTotalExpenses } from '@/lib/utils'
@@ -34,24 +34,30 @@ export default function BudgetTab() {
       .reduce((sum, transaction) => sum + transaction.amount, 0)
   }
 
+  // Get selected month in YYYY-MM format from the period selector
+  const selectedMonth = state.currentPeriod.toISOString().slice(0, 7)
+  
   // Calculate budget data with dynamic spent amounts and populate category_name
-  const budgetsWithSpent = state.budgets.map(budget => {
-    const category = state.categories.find(c => c.id === budget.category_id)
-    const limit = Number(budget.limit)
-    const spent = calculateBudgetSpent(category?.name || '')
-    return {
-      ...budget,
-      category_name: category?.name || '',
-      limit: limit,
-      spent: spent,
-      remaining: limit - spent
-    }
-  })
+  // Only show budgets for the selected month
+  const budgetsWithSpent = state.budgets
+    .filter(budget => budget.month === selectedMonth)
+    .map(budget => {
+      const category = state.categories.find(c => c.id === budget.category_id)
+      const limit = Number(budget.limit)
+      const spent = calculateBudgetSpent(category?.name || '')
+      return {
+        ...budget,
+        category_name: category?.name || '',
+        limit: limit,
+        spent: spent,
+        remaining: limit - spent
+      }
+    })
 
   const totalBudget = budgetsWithSpent.reduce((sum, budget) => sum + Number(budget.limit), 0)
   const totalSpent = budgetsWithSpent.reduce((sum, budget) => sum + Number(budget.spent), 0)
 
-  // Get expense categories that don't have budgets
+  // Get expense categories that don't have budgets for current month
   const budgetedCategories = budgetsWithSpent.map(budget => budget.category_name).filter(Boolean)
   const unbudgetedCategories = state.categories
     .filter(category => category.type === 'expense' && !budgetedCategories.includes(category.name))
@@ -136,7 +142,7 @@ export default function BudgetTab() {
 
       {/* Controls section */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <PeriodSelector />
+        <MonthSelector />
         <Button onClick={handleAddBudget} className="shrink-0">
           <Plus className="h-4 w-4 mr-2" />
           Add Budget
@@ -146,7 +152,7 @@ export default function BudgetTab() {
       {/* Budgeted Categories section */}
       <Card>
         <CardHeader>
-          <CardTitle>Budgeted Categories</CardTitle>
+          <CardTitle>Budgeted Categories for {state.currentPeriod.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</CardTitle>
         </CardHeader>
         <CardContent>
           {budgetsWithSpent.length === 0 ? (

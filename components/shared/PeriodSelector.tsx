@@ -8,7 +8,7 @@ import { useApp, useCurrentPeriodText } from '@/context/AppContext'
 import { PeriodType } from '@/types'
 
 // PeriodSelector component - allows users to select different time periods and navigate between them
-// This component is used across multiple tabs (Records, Analysis, Budget) for consistent period selection
+// This component is used across multiple tabs (Records, Analysis) for consistent period selection
 export default function PeriodSelector() {
   const { state, dispatch } = useApp()
   const currentPeriodText = useCurrentPeriodText()
