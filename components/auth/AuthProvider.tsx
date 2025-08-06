@@ -83,6 +83,7 @@ export function LoginForm() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [showSignUpSuccess, setShowSignUpSuccess] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -92,6 +93,9 @@ export function LoginForm() {
     try {
       if (isSignUp) {
         await signUp(email, password)
+        setShowSignUpSuccess(true)
+        setEmail('')
+        setPassword('')
       } else {
         await signIn(email, password)
       }
@@ -100,6 +104,41 @@ export function LoginForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show success message after sign up
+  if (showSignUpSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center text-green-600">
+              Account Created Successfully! 🎉
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 text-center">
+              <div className="text-4xl mb-4">📧</div>
+              <p className="text-muted-foreground">
+                Please check your email for a confirmation link to verify your account.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Once you've confirmed your email, you can sign in to access your Wallet Wizard.
+              </p>
+              <Button 
+                onClick={() => {
+                  setShowSignUpSuccess(false)
+                  setIsSignUp(false)
+                }}
+                className="w-full"
+              >
+                Back to Sign In
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -142,7 +181,12 @@ export function LoginForm() {
               type="button"
               variant="outline"
               className="w-full"
-              onClick={() => setIsSignUp(!isSignUp)}
+              onClick={() => {
+                setIsSignUp(!isSignUp)
+                setError('')
+                setEmail('')
+                setPassword('')
+              }}
             >
               {isSignUp ? 'Already have an account? Sign In' : 'Need an account? Sign Up'}
             </Button>
