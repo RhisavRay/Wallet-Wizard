@@ -114,6 +114,7 @@ function CreateAccountDialog({
         id: generateId(),
         name: name.trim(),
         initial_balance: parseFloat(initialBalance) || 0,
+        current_balance: parseFloat(initialBalance) || 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
