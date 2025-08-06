@@ -7,6 +7,19 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
+// Define types for the debug information
+interface TableTest {
+  exists: boolean
+  error: string | null
+  count: number
+}
+
+interface PolicyTest {
+  accessible: boolean
+  error: string | null
+  dataCount: number
+}
+
 export default function DatabaseDebug() {
   const { user } = useAuth()
   const { state: appState } = useApp()
@@ -31,107 +44,107 @@ export default function DatabaseDebug() {
         session: await supabase.auth.getSession(),
       }
 
-             // Check database connection - test each table directly
-       const tableTests = {}
-       for (const tableName of ['transactions', 'categories', 'accounts', 'budgets']) {
-         try {
-           const { data, error } = await supabase
-             .from(tableName)
-             .select('*')
-             .limit(1)
-           
-           tableTests[tableName] = {
-             exists: !error || error.code !== 'PGRST116',
-             error: error?.message || null,
-             count: data?.length || 0
-           }
-         } catch (err) {
-           tableTests[tableName] = {
-             exists: false,
-             error: err instanceof Error ? err.message : String(err),
-             count: 0
-           }
-         }
-       }
+      // Check database connection - test each table directly
+      const tableTests: Record<string, TableTest> = {}
+      for (const tableName of ['transactions', 'categories', 'accounts', 'budgets']) {
+        try {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('*')
+            .limit(1)
+          
+          tableTests[tableName] = {
+            exists: !error || error.code !== 'PGRST116',
+            error: error?.message || null,
+            count: data?.length || 0
+          }
+        } catch (err) {
+          tableTests[tableName] = {
+            exists: false,
+            error: err instanceof Error ? err.message : String(err),
+            count: 0
+          }
+        }
+      }
 
-       info.database = {
-         tables: tableTests,
-       }
+      info.database = {
+        tables: tableTests,
+      }
 
-       // Check RLS policies by testing data access
-       if (user) {
-         const policyTests = {}
-         for (const tableName of ['transactions', 'categories', 'accounts', 'budgets']) {
-           try {
-             const { data, error } = await supabase
-               .from(tableName)
-               .select('*')
-               .limit(1)
-             
-             policyTests[tableName] = {
-               accessible: !error || error.code !== 'PGRST116',
-               error: error?.message || null,
-               dataCount: data?.length || 0
-             }
-           } catch (err) {
-             policyTests[tableName] = {
-               accessible: false,
-               error: err instanceof Error ? err.message : String(err),
-               dataCount: 0
-             }
-           }
-         }
+      // Check RLS policies by testing data access
+      if (user) {
+        const policyTests: Record<string, PolicyTest> = {}
+        for (const tableName of ['transactions', 'categories', 'accounts', 'budgets']) {
+          try {
+            const { data, error } = await supabase
+              .from(tableName)
+              .select('*')
+              .limit(1)
+            
+            policyTests[tableName] = {
+              accessible: !error || error.code !== 'PGRST116',
+              error: error?.message || null,
+              dataCount: data?.length || 0
+            }
+          } catch (err) {
+            policyTests[tableName] = {
+              accessible: false,
+              error: err instanceof Error ? err.message : String(err),
+              dataCount: 0
+            }
+          }
+        }
 
-         info.policies = {
-           data: policyTests,
-         }
-       }
+        info.policies = {
+          data: policyTests,
+        }
+      }
 
-             // Test database operations
-       if (user) {
-         try {
-           // Test creating a sample transaction
-           const testTransaction = {
-             amount: 100,
-             type: 'income',
-             category: 'Test',
-             account: 'Test Account',
-             date: new Date().toISOString().split('T')[0],
-             note: 'Debug test transaction'
-           }
+      // Test database operations
+      if (user) {
+        try {
+          // Test creating a sample transaction
+          const testTransaction = {
+            amount: 100,
+            type: 'income',
+            category: 'Test',
+            account: 'Test Account',
+            date: new Date().toISOString().split('T')[0],
+            note: 'Debug test transaction'
+          }
 
-           const { data: createData, error: createError } = await supabase
-             .from('transactions')
-             .insert({
-               ...testTransaction,
-               user_id: user.id,
-               created_at: new Date().toISOString(),
-               updated_at: new Date().toISOString(),
-             })
-             .select()
-             .single()
+          const { data: createData, error: createError } = await supabase
+            .from('transactions')
+            .insert({
+              ...testTransaction,
+              user_id: user.id,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single()
 
-           if (createData) {
-             // Delete the test transaction
-             await supabase
-               .from('transactions')
-               .delete()
-               .eq('id', createData.id)
-           }
+          if (createData) {
+            // Delete the test transaction
+            await supabase
+              .from('transactions')
+              .delete()
+              .eq('id', createData.id)
+          }
 
-           info.testQuery = {
-             createSuccess: !createError,
-             createError: createError?.message,
-             testData: createData,
-           }
-         } catch (error) {
-           info.testQuery = {
-             createSuccess: false,
-             createError: error instanceof Error ? error.message : String(error),
-             testData: null,
-           }
-         }
-       }
+          info.testQuery = {
+            createSuccess: !createError,
+            createError: createError?.message,
+            testData: createData,
+          }
+        } catch (error) {
+          info.testQuery = {
+            createSuccess: false,
+            createError: error instanceof Error ? error.message : String(error),
+            testData: null,
+          }
+        }
+      }
 
     } catch (error) {
       info.error = error instanceof Error ? error.message : String(error)
