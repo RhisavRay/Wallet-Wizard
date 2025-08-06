@@ -15,6 +15,7 @@ interface CategoryBreakdownProps {
   analysisType: 'income' | 'expense'
   onEditTransaction?: (transaction: Transaction) => void
   onDeleteTransaction?: (transactionId: string) => void
+  showHeader?: boolean
 }
 
 export default function CategoryBreakdown({ 
@@ -22,7 +23,8 @@ export default function CategoryBreakdown({
   transactions, 
   analysisType,
   onEditTransaction,
-  onDeleteTransaction
+  onDeleteTransaction,
+  showHeader = true
 }: CategoryBreakdownProps) {
   // Local state for delete confirmation
   const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
@@ -60,23 +62,25 @@ export default function CategoryBreakdown({
 
   return (
     <div className="space-y-4">
-      {/* Summary */}
-      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-        <div>
-          <h3 className="font-semibold text-lg">{category}</h3>
-          <p className="text-sm text-muted-foreground">
-            {categoryTransactions.length} transaction{categoryTransactions.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <div className="text-right">
-          <div className={`text-xl font-bold ${analysisType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(categoryTotal)}
+      {/* Summary - only show if showHeader is true */}
+      {showHeader && (
+        <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+          <div>
+            <h3 className="font-semibold text-lg">{category}</h3>
+            <p className="text-sm text-muted-foreground">
+              {categoryTransactions.length} transaction{categoryTransactions.length !== 1 ? 's' : ''}
+            </p>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Total {analysisType.charAt(0).toUpperCase() + analysisType.slice(1)}
+          <div className="text-right">
+            <div className={`text-xl font-bold ${analysisType === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+              {formatCurrency(categoryTotal)}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Total {analysisType.charAt(0).toUpperCase() + analysisType.slice(1)}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Transactions list */}
       <div className="space-y-2">
