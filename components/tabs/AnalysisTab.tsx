@@ -10,11 +10,12 @@ import { formatCurrency, calculateTotalIncome, calculateTotalExpenses, calculate
 import IncomeExpenseOverview from '@/components/charts/IncomeExpenseOverview'
 import ExpenseFlowChart from '@/components/charts/ExpenseFlowChart'
 import AccountAnalysis from '@/components/charts/AccountAnalysis'
+import CategoryBreakdown from '@/components/charts/CategoryBreakdown'
 
 // AnalysisTab component - provides charts and visualizations for financial analysis
 // This tab shows various breakdowns and trends of income, expenses, and account data
 export default function AnalysisTab() {
-  const { state } = useApp()
+  const { state, dispatch } = useApp()
   const filteredTransactions = useFilteredTransactions()
   
   // Local state for chart interactions and analysis type selection
@@ -30,6 +31,22 @@ export default function AnalysisTab() {
   const handleAnalysisChange = (value: string) => {
     setSelectedAnalysis(value)
     setSelectedCategory(null) // Reset category selection when changing analysis
+  }
+
+  // Handle editing a transaction
+  const handleEditTransaction = (transaction: any) => {
+    // For now, we'll just dispatch an action to open the transaction dialog
+    // This would need to be connected to the transaction dialog in the parent component
+    console.log('Edit transaction:', transaction)
+    // You can implement the actual edit functionality here
+  }
+
+  // Handle deleting a transaction
+  const handleDeleteTransaction = (transactionId: string) => {
+    dispatch({
+      type: 'DELETE_TRANSACTION',
+      payload: transactionId
+    })
   }
 
   // Render the selected analysis component
@@ -213,9 +230,13 @@ export default function AnalysisTab() {
             <CardTitle>Category Breakdown: {selectedCategory}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-sm text-muted-foreground">
-              Detailed breakdown for {selectedCategory} will be implemented here.
-            </div>
+            <CategoryBreakdown 
+              category={selectedCategory}
+              transactions={filteredTransactions}
+              analysisType={selectedAnalysis.includes('income') ? 'income' : 'expense'}
+              onEditTransaction={handleEditTransaction}
+              onDeleteTransaction={handleDeleteTransaction}
+            />
           </CardContent>
         </Card>
       )}
