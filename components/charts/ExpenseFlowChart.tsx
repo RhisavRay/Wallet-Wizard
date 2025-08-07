@@ -1,7 +1,7 @@
 'use client'
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, getDateRange } from '@/lib/utils'
 import { Transaction, PeriodType } from '@/types'
 
 // ExpenseFlowChart component - line chart showing income or expenses over time
@@ -9,36 +9,110 @@ import { Transaction, PeriodType } from '@/types'
 interface ExpenseFlowChartProps {
   transactions: Transaction[]
   period: PeriodType
+  currentPeriod: Date
   analysisType?: 'income' | 'expense'
 }
 
 export default function ExpenseFlowChart({ 
   transactions, 
   period,
+  currentPeriod,
   analysisType = 'expense'
 }: ExpenseFlowChartProps) {
   // Filter transactions by type
   const filteredTransactions = transactions.filter(t => t.type === analysisType)
   
-  // Group transactions by date and calculate daily totals
-  const groupedData = filteredTransactions.reduce((acc, transaction) => {
-    const date = transaction.date
-    if (!acc[date]) {
-      acc[date] = { date, amount: 0 }
+  // Get the date range for the current period using the selected period date
+  const { start, end } = getDateRange(period, currentPeriod)
+  
+  // Generate data points based on period type
+  const generateDataPoints = () => {
+    const dataPoints: Array<{ date: string; amount: number; displayDate: string }> = []
+    
+    if (period === 'daily') {
+      // Single day - just show the current date
+      const currentDate = new Date()
+      const dateStr = currentDate.toISOString().split('T')[0]
+      const amount = filteredTransactions
+        .filter(t => t.date === dateStr)
+        .reduce((sum, t) => sum + t.amount, 0)
+      
+      dataPoints.push({
+        date: dateStr,
+        amount,
+        displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      })
+    } else if (period === 'weekly') {
+      // Generate data for all 7 days of the week
+      const currentDate = new Date(start)
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentDate)
+        date.setDate(currentDate.getDate() + i)
+        const dateStr = date.toISOString().split('T')[0]
+        const amount = filteredTransactions
+          .filter(t => t.date === dateStr)
+          .reduce((sum, t) => sum + t.amount, 0)
+        
+        dataPoints.push({
+          date: dateStr,
+          amount,
+          displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        })
+      }
+    } else if (period === 'monthly') {
+      // Generate data for every day of the month
+      const currentDate = new Date(start)
+      const lastDay = new Date(end).getDate()
+      
+      for (let i = 1; i <= lastDay; i++) {
+        const date = new Date(currentDate)
+        date.setDate(i)
+        const dateStr = date.toISOString().split('T')[0]
+        const amount = filteredTransactions
+          .filter(t => t.date === dateStr)
+          .reduce((sum, t) => sum + t.amount, 0)
+        
+        dataPoints.push({
+          date: dateStr,
+          amount,
+          displayDate: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        })
+      }
+    } else {
+      // For 3months, 4months, yearly - show monthly data with year
+      const currentDate = new Date(start)
+      const endDate = new Date(end)
+      
+      while (currentDate <= endDate) {
+        const dateStr = currentDate.toISOString().split('T')[0]
+        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+        
+        const amount = filteredTransactions
+          .filter(t => {
+            const transactionDate = new Date(t.date)
+            return transactionDate >= monthStart && transactionDate <= monthEnd
+          })
+          .reduce((sum, t) => sum + t.amount, 0)
+        
+        dataPoints.push({
+          date: dateStr,
+          amount,
+          displayDate: currentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        })
+        
+        // Move to next month
+        currentDate.setMonth(currentDate.getMonth() + 1)
+      }
     }
     
-    acc[date].amount += transaction.amount
-    return acc
-  }, {} as Record<string, { date: string; amount: number }>)
+    return dataPoints
+  }
 
-  // Convert to array and sort by date
-  const chartData = Object.values(groupedData)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map(item => ({
-      ...item,
-      date: formatDate(item.date),
-      [analysisType]: item.amount
-    }))
+  const chartData = generateDataPoints().map(item => ({
+    ...item,
+    [analysisType]: item.amount
+  }))
 
   // Custom tooltip formatter
   const formatTooltip = (value: number, name: string) => [
@@ -64,18 +138,19 @@ export default function ExpenseFlowChart({
         <LineChart data={chartData}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis 
-            dataKey="date" 
+            dataKey="displayDate" 
             tick={{ fontSize: 12 }}
             angle={-45}
             textAnchor="end"
-            height={60}
+            height={80}
+            interval={0}
+            minTickGap={5}
           />
           <YAxis 
             tick={{ fontSize: 12 }}
             tickFormatter={(value) => formatCurrency(value)}
           />
           <Tooltip formatter={formatTooltip} />
-          <Legend />
           <Line 
             type="monotone" 
             dataKey={analysisType}
@@ -87,6 +162,7 @@ export default function ExpenseFlowChart({
               r: 4 
             }}
             activeDot={{ r: 6 }}
+            connectNulls={false}
           />
         </LineChart>
       </ResponsiveContainer>

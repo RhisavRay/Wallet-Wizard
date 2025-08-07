@@ -161,6 +161,7 @@ export default function AnalysisTab() {
               <ExpenseFlowChart 
                 transactions={filteredTransactions}
                 period={state.filterState.period}
+                currentPeriod={state.currentPeriod}
                 analysisType="income"
               />
             </CardContent>
@@ -177,6 +178,7 @@ export default function AnalysisTab() {
               <ExpenseFlowChart 
                 transactions={filteredTransactions}
                 period={state.filterState.period}
+                currentPeriod={state.currentPeriod}
                 analysisType="expense"
               />
             </CardContent>
