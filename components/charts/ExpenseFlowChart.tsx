@@ -1,6 +1,6 @@
 'use client'
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { formatCurrency, formatDate, getDateRange } from '@/lib/utils'
 import { Transaction, PeriodType } from '@/types'
 
@@ -11,6 +11,183 @@ interface ExpenseFlowChartProps {
   period: PeriodType
   currentPeriod: Date
   analysisType?: 'income' | 'expense'
+}
+
+// Calendar Grid component to show daily transaction data
+function CalendarGrid({ 
+  transactions, 
+  period, 
+  currentPeriod, 
+  analysisType 
+}: {
+  transactions: Transaction[]
+  period: PeriodType
+  currentPeriod: Date
+  analysisType: 'income' | 'expense'
+}) {
+  // Only show calendar for daily, weekly, and monthly periods
+  if (!['daily', 'weekly', 'monthly'].includes(period)) {
+    return null
+  }
+
+  const { start, end } = getDateRange(period, currentPeriod)
+  const filteredTransactions = transactions.filter(t => t.type === analysisType)
+  
+  // Generate calendar data
+  const generateCalendarData = () => {
+    const calendarData: Array<{
+      day: number
+      date: string
+      amount: number
+      hasTransaction: boolean
+      isEmpty?: boolean
+    }> = []
+    
+    if (period === 'daily') {
+      // Single day
+      const currentDate = new Date(start)
+      const dateStr = currentDate.toISOString().split('T')[0]
+      const amount = filteredTransactions
+        .filter(t => t.date === dateStr)
+        .reduce((sum, t) => sum + t.amount, 0)
+      
+      calendarData.push({
+        day: currentDate.getDate(),
+        date: dateStr,
+        amount,
+        hasTransaction: amount > 0
+      })
+    } else if (period === 'weekly') {
+      // 7 days of the week
+      const currentDate = new Date(start)
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentDate)
+        date.setDate(currentDate.getDate() + i)
+        const dateStr = date.toISOString().split('T')[0]
+        const amount = filteredTransactions
+          .filter(t => t.date === dateStr)
+          .reduce((sum, t) => sum + t.amount, 0)
+        
+        calendarData.push({
+          day: date.getDate(),
+          date: dateStr,
+          amount,
+          hasTransaction: amount > 0
+        })
+      }
+    } else if (period === 'monthly') {
+      // All days of the month with proper alignment
+      const currentDate = new Date(start)
+      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      
+      // Add empty cells for days before the first day of the month
+      const firstDayWeekday = firstDayOfMonth.getDay() // 0 = Sunday, 1 = Monday, etc.
+      for (let i = 0; i < firstDayWeekday; i++) {
+        calendarData.push({
+          day: 0,
+          date: '',
+          amount: 0,
+          hasTransaction: false,
+          isEmpty: true
+        })
+      }
+      
+      // Add all days of the month
+      for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
+        const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i)
+        const dateStr = date.toISOString().split('T')[0]
+        const amount = filteredTransactions
+          .filter(t => t.date === dateStr)
+          .reduce((sum, t) => sum + t.amount, 0)
+        
+        calendarData.push({
+          day: i,
+          date: dateStr,
+          amount,
+          hasTransaction: amount > 0
+        })
+      }
+    }
+    
+    return calendarData
+  }
+
+  const calendarData = generateCalendarData()
+  
+  if (calendarData.length === 0) {
+    return null
+  }
+
+  // Get month name for header
+  const monthName = new Date(start).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  
+  // For weekly view, show day names
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+  return (
+    <div className="mt-6">
+      <div className="w-full">
+        {/* Day names for all views */}
+        <div className="grid grid-cols-7 mb-2">
+          {dayNames.map((day, index) => (
+            <div key={day} className="text-center text-sm font-medium text-muted-foreground py-1">
+              {day}
+            </div>
+          ))}
+        </div>
+        
+        {/* Calendar grid */}
+        <div className={`grid ${
+          period === 'daily' ? 'grid-cols-1' : 
+          period === 'weekly' ? 'grid-cols-7' : 
+          'grid-cols-7' // Monthly view - 7 columns
+        } border border-gray-300 divide-x divide-gray-300`}>
+          {calendarData.map((item, index) => {
+            // Determine background styling based on transaction types
+            let bgClass = 'bg-muted/30' // Default for no transactions
+            let diagonalClass = ''
+            
+            if (!item.isEmpty && item.hasTransaction) {
+              bgClass = analysisType === 'income' ? 'bg-green-100' : 'bg-red-100'
+            } else if (item.isEmpty) {
+              bgClass = 'bg-gray-50'
+            }
+            
+            return (
+              <div
+                key={item.date || `empty-${index}`}
+                className={`
+                  h-16 p-2 text-center relative
+                  ${bgClass}
+                  ${diagonalClass}
+                  ${index >= 7 ? 'border-t border-gray-300' : ''}
+                `}
+              >
+                {!item.isEmpty && (
+                  <>
+                    <div className="text-sm font-medium">
+                      {item.day}
+                    </div>
+                    {item.hasTransaction && (
+                      <div className="text-xs font-medium mt-1">
+                        <span className={`
+                          ${analysisType === 'income' ? 'text-green-700' : ''}
+                          ${analysisType === 'expense' ? 'text-red-700' : ''}
+                        `}>
+                          {formatCurrency(item.amount)}
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function ExpenseFlowChart({ 
@@ -133,39 +310,49 @@ export default function ExpenseFlowChart({
   }
 
   return (
-    <div className="h-64">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis 
-            dataKey="displayDate" 
-            tick={{ fontSize: 12 }}
-            angle={-45}
-            textAnchor="end"
-            height={80}
-            interval={0}
-            minTickGap={5}
-          />
-          <YAxis 
-            tick={{ fontSize: 12 }}
-            tickFormatter={(value) => formatCurrency(value)}
-          />
-          <Tooltip formatter={formatTooltip} />
-          <Line 
-            type="monotone" 
-            dataKey={analysisType}
-            stroke={analysisType === 'income' ? '#22c55e' : '#ef4444'} // green for income, red for expense
-            strokeWidth={2}
-            dot={{ 
-              fill: analysisType === 'income' ? '#22c55e' : '#ef4444', 
-              strokeWidth: 2, 
-              r: 4 
-            }}
-            activeDot={{ r: 6 }}
-            connectNulls={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div>
+      <div className="h-64">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="displayDate" 
+              tick={{ fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+              interval={0}
+              minTickGap={5}
+            />
+            <YAxis 
+              tick={{ fontSize: 12 }}
+              tickFormatter={(value) => formatCurrency(value)}
+            />
+            <Tooltip formatter={formatTooltip} />
+            <Line 
+              type="monotone" 
+              dataKey={analysisType}
+              stroke={analysisType === 'income' ? '#22c55e' : '#ef4444'} // green for income, red for expense
+              strokeWidth={2}
+              dot={{ 
+                fill: analysisType === 'income' ? '#22c55e' : '#ef4444', 
+                strokeWidth: 2, 
+                r: 4 
+              }}
+              activeDot={{ r: 6 }}
+              connectNulls={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      
+      {/* Calendar Grid */}
+      <CalendarGrid 
+        transactions={transactions}
+        period={period}
+        currentPeriod={currentPeriod}
+        analysisType={analysisType}
+      />
     </div>
   )
 } 
