@@ -8,9 +8,10 @@ import { Transaction } from '@/types'
 // This chart visualizes how each account contributes to total income and expenses
 interface AccountAnalysisProps {
   transactions: Transaction[]
+  accounts: Array<{ id: string; name: string; initial_balance: number }>
 }
 
-export default function AccountAnalysis({ transactions }: AccountAnalysisProps) {
+export default function AccountAnalysis({ transactions, accounts }: AccountAnalysisProps) {
   // Group transactions by account and calculate totals
   const accountData = transactions.reduce((acc, transaction) => {
     const account = transaction.account
@@ -27,10 +28,12 @@ export default function AccountAnalysis({ transactions }: AccountAnalysisProps) 
     return acc
   }, {} as Record<string, { account: string; income: number; expense: number }>)
 
-  // Convert to array and filter accounts with activity
-  const chartData = Object.values(accountData)
-    .filter(item => item.income > 0 || item.expense > 0)
-    .sort((a, b) => (b.income + b.expense) - (a.income + a.expense))
+  // Create chart data for all accounts, including those with no transactions
+  const chartData = accounts.map(account => ({
+    account: account.name,
+    income: accountData[account.name]?.income || 0,
+    expense: accountData[account.name]?.expense || 0
+  })).sort((a, b) => (b.income + b.expense) - (a.income + a.expense))
 
   // Custom tooltip formatter
   const formatTooltip = (value: number, name: string) => [

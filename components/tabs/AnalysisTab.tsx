@@ -192,7 +192,10 @@ export default function AnalysisTab() {
               <CardTitle>Account Analysis</CardTitle>
             </CardHeader>
             <CardContent>
-              <AccountAnalysis transactions={filteredTransactions} />
+              <AccountAnalysis 
+                transactions={filteredTransactions} 
+                accounts={state.accounts}
+              />
             </CardContent>
           </Card>
         )
