@@ -142,12 +142,26 @@ export function getDateRange(period: string, baseDate: Date = new Date()): { sta
       end.setMonth(end.getMonth() + 1, 0)
       break
     case '3months':
-      // 3 months back from current date
-      start.setMonth(start.getMonth() - 3)
+      // Specific 3-month period (e.g., Jan-Mar, Apr-Jun, etc.)
+      const month3 = start.getMonth()
+      const quarter3 = Math.floor(month3 / 3)
+      const startMonth3 = quarter3 * 3
+      start.setMonth(startMonth3, 1) // Start of first month in quarter
+      // Set end to the last day of the third month in the quarter
+      end.setMonth(startMonth3 + 2)
+      end.setMonth(end.getMonth() + 1, 0) // This sets to the last day of the current month
+      console.log('3months debug:', { month3, quarter3, startMonth3, start: start.toDateString(), end: end.toDateString() })
       break
     case '4months':
-      // 4 months back from current date
-      start.setMonth(start.getMonth() - 4)
+      // Specific 4-month period (e.g., Jan-Apr, May-Aug, Sep-Dec)
+      const month4 = start.getMonth()
+      const quarter4 = Math.floor(month4 / 4)
+      const startMonth4 = quarter4 * 4
+      start.setMonth(startMonth4, 1) // Start of first month in 4-month period
+      // Set end to the last day of the fourth month in the period
+      end.setMonth(startMonth4 + 3)
+      end.setMonth(end.getMonth() + 1, 0) // This sets to the last day of the current month
+      console.log('4months debug:', { month4, quarter4, startMonth4, start: start.toDateString(), end: end.toDateString() })
       break
     case 'yearly':
       // Start of year to end of year
@@ -174,9 +188,15 @@ export function formatPeriod(period: string, date: Date = new Date()): string {
     case 'monthly':
       return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
     case '3months':
-      return 'Last 3 Months'
+      const { start: start3, end: end3 } = getDateRange('3months', date)
+      const result3 = `${start3.toLocaleDateString('en-US', { month: 'short' })} - ${end3.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+      console.log('3months format debug:', { start3: start3.toDateString(), end3: end3.toDateString(), result: result3 })
+      return result3
     case '4months':
-      return 'Last 4 Months'
+      const { start: start4, end: end4 } = getDateRange('4months', date)
+      const result4 = `${start4.toLocaleDateString('en-US', { month: 'short' })} - ${end4.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
+      console.log('4months format debug:', { start4: start4.toDateString(), end4: end4.toDateString(), result: result4 })
+      return result4
     case 'yearly':
       return date.getFullYear().toString()
     default:

@@ -20,7 +20,7 @@ export default function AnalysisTab() {
   
   // Local state for chart interactions and analysis type selection
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-  const [selectedAnalysis, setSelectedAnalysis] = useState<string>('income-overview')
+  const [selectedAnalysis, setSelectedAnalysis] = useState<string>('expense-overview')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
   
   // Refs for scrolling to category breakdowns
